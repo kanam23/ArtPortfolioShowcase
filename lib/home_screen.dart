@@ -1,12 +1,12 @@
-// ignore_for_file: avoid_print
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'create_post.dart'; // Import the CreatePostScreen
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'userprofile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -65,13 +65,31 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void navigateToSettingsScreen(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => UserProfileScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(loggedInUsername.isNotEmpty
-            ? "$loggedInUsername's Home Page"
-            : 'Home'),
+        title: Text(
+            loggedInUsername.isNotEmpty ? "$loggedInUsername's Home" : 'Home'),
+        actions: [
+          GestureDetector(
+            onTap: () {
+              navigateToSettingsScreen(context);
+            },
+            child: CircleAvatar(
+              backgroundImage: NetworkImage(
+                  'https://via.placeholder.com/150'), // Placeholder image URL
+              radius: 22,
+            ),
+          ),
+        ],
       ),
       body: ListView.builder(
         itemCount: posts.length,
@@ -79,8 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
           return PostItem(post: posts[index]);
         },
       ),
-      // Inside HomeScreen's floatingActionButton onPressed method
-
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -100,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
 class PostItem extends StatelessWidget {
   final Post post;
 
-  const PostItem({super.key, required this.post});
+  const PostItem({Key? key, required this.post}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
