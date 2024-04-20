@@ -2,8 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'create_post.dart'; // Import the CreatePostScreen
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'settings.screent.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -65,22 +67,40 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void navigateToSettingsScreen(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SettingsScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(loggedInUsername.isNotEmpty
-            ? "$loggedInUsername's Home Page"
-            : 'Home'),
+        title: Text(
+            loggedInUsername.isNotEmpty ? "$loggedInUsername's Home" : 'Home'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              navigateToSettingsScreen(context);
+            },
+          ),
+        ],
       ),
       body: ListView.builder(
         itemCount: posts.length,
         itemBuilder: (context, index) {
-          return PostItem(post: posts[index]);
+          // Display each post in a ListTile
+          return ListTile(
+            title: Text(posts[index].userID), // Example field
+            leading: Image.network(posts[index].imageURL), // Display image
+            // Display other relevant information about the post
+            subtitle: Text(posts[index].description), // Example field
+          );
         },
       ),
-      // Inside HomeScreen's floatingActionButton onPressed method
-
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -97,73 +117,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class PostItem extends StatelessWidget {
-  final Post post;
-
-  const PostItem({super.key, required this.post});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.all(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  post.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  post.username,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          if (post.imageURL.isNotEmpty)
-            Image.network(
-              post.imageURL,
-              fit: BoxFit.cover,
-            ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(post.description),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // Define a Post class to represent a single post
 class Post {
   final String imageURL;
   final String userID;
-  final String username;
-  final String title; // Add the title field
-  final String description;
+  final String description; // Example field, add more as needed
 
   Post({
     required this.imageURL,
     required this.userID,
-    required this.username,
-    required this.title,
     required this.description,
   });
 
+  // Factory method to create a Post object from Firestore document data
   factory Post.fromFirestore(Map<String, dynamic> data) {
     return Post(
-      imageURL: data['imageURL'] ?? '',
-      userID: data['userID'] ?? '',
-      username: data['username'] ?? '',
-      title: data['title'] ?? '', // Initialize title field
-      description: data['description'] ?? '',
+      imageURL: data['imageURL'],
+      userID: data['userID'],
+      description: data['description'],
     );
   }
 }
