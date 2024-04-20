@@ -1,48 +1,24 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:p2/userprofile_screen.dart';
 import 'create_post.dart'; // Import the CreatePostScreen
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'userprofile_screen.dart';
-
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key});
+  const HomeScreen({super.key});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Define a list to store the fetched posts
-  List<Post> posts = [];
   String loggedInUsername = '';
-
-  // Method to fetch posts from Firestore
-  Future<void> fetchPosts() async {
-    try {
-      // Fetch posts from Firestore collection
-      QuerySnapshot<Map<String, dynamic>> snapshot =
-          await FirebaseFirestore.instance.collection('posts').get();
-
-      // Parse fetched documents into Post objects
-      List<Post> fetchedPosts = snapshot.docs.map((doc) {
-        return Post.fromFirestore(doc.data());
-      }).toList();
-
-      // Update the state with fetched posts
-      setState(() {
-        posts = fetchedPosts;
-      });
-    } catch (e) {
-      print('Error fetching posts: $e');
-    }
-  }
 
   @override
   void initState() {
     super.initState();
-    // Fetch posts when the screen loads
-    fetchPosts();
     fetchUsername();
   }
 
@@ -65,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void navigateToSettingsScreen(BuildContext context) {
+  void navigateToUserProfileScreen(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => UserProfileScreen()),
@@ -76,25 +52,54 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-            loggedInUsername.isNotEmpty ? "$loggedInUsername's Home" : 'Home'),
+        title: Text(loggedInUsername.isNotEmpty
+            ? "$loggedInUsername's Home Page"
+            : 'Home'),
         actions: [
-          GestureDetector(
-            onTap: () {
-              navigateToSettingsScreen(context);
-            },
-            child: CircleAvatar(
-              backgroundImage: NetworkImage(
-                  'https://via.placeholder.com/150'), // Placeholder image URL
-              radius: 22,
+          Padding(
+            padding: const EdgeInsets.only(
+                left: 16.0), // Adjust left padding as needed
+            child: GestureDetector(
+              onTap: () {
+                navigateToUserProfileScreen(context);
+              },
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(
+                    'https://via.placeholder.com/150'), // Placeholder image URL
+                radius: 22,
+              ),
             ),
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: posts.length,
-        itemBuilder: (context, index) {
-          return PostItem(post: posts[index]);
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance.collection('posts').snapshots(),
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
+          }
+          final List<DocumentSnapshot> documents = snapshot.data!.docs;
+          return ListView.builder(
+            itemCount: documents.length,
+            itemBuilder: (context, index) {
+              final Map<String, dynamic> data =
+                  documents[index].data() as Map<String, dynamic>;
+              return PostItem(
+                imageURL: data['imageURL'],
+                userID: data['userID'],
+                description: data['description'],
+                title: data['title'],
+                username: data['username'],
+              );
+            },
+          );
         },
       ),
       floatingActionButton: FloatingActionButton(
@@ -114,72 +119,59 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class PostItem extends StatelessWidget {
-  final Post post;
+  final String? imageURL;
+  final String? userID;
+  final String? description;
+  final String? title;
+  final String? username;
 
-  const PostItem({Key? key, required this.post}) : super(key: key);
+  const PostItem({
+    this.imageURL,
+    this.userID,
+    this.description,
+    this.title,
+    this.username,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 4,
-      margin: const EdgeInsets.all(8),
+      margin: const EdgeInsets.all(8.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  post.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  post.username,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
+          if (title != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                title!,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-          if (post.imageURL.isNotEmpty)
-            Image.network(
-              post.imageURL,
-              fit: BoxFit.cover,
+          if (username != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                'By $username',
+                style: const TextStyle(fontSize: 12.0, color: Colors.grey),
+              ),
             ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(post.description),
-          ),
+          if (imageURL != null && imageURL!.isNotEmpty)
+            Center(
+              child: Image.network(
+                imageURL!,
+                fit: BoxFit.cover, // Ensure the image fills the container
+                width: double.infinity, // Ensure the image takes full width
+                height: 200, // Set the fixed height for all images
+              ),
+            ),
+          if (description != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(description!),
+            ),
         ],
       ),
-    );
-  }
-}
-
-// Define a Post class to represent a single post
-class Post {
-  final String imageURL;
-  final String userID;
-  final String username;
-  final String title; // Add the title field
-  final String description;
-
-  Post({
-    required this.imageURL,
-    required this.userID,
-    required this.username,
-    required this.title,
-    required this.description,
-  });
-
-  factory Post.fromFirestore(Map<String, dynamic> data) {
-    return Post(
-      imageURL: data['imageURL'] ?? '',
-      userID: data['userID'] ?? '',
-      username: data['username'] ?? '',
-      title: data['title'] ?? '', // Initialize title field
-      description: data['description'] ?? '',
     );
   }
 }

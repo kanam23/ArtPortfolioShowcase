@@ -1,17 +1,14 @@
-// ignore_for_file: avoid_print
-
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
 class CreatePostScreen extends StatefulWidget {
   final String username;
 
-  const CreatePostScreen({super.key, required this.username});
+  const CreatePostScreen({Key? key, required this.username}) : super(key: key);
 
   @override
   _CreatePostScreenState createState() => _CreatePostScreenState();
@@ -20,19 +17,14 @@ class CreatePostScreen extends StatefulWidget {
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController imageController =
+      TextEditingController(); // Add this controller
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   File? _image;
 
-  Future<void> _getImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
+  void _getImage() {
     setState(() {
-      if (pickedFile != null) {
-        _image = File(pickedFile.path);
-      } else {
-        print('No image selected.');
-      }
+      _image = null; // Reset image when URL is provided
     });
   }
 
@@ -42,9 +34,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         // Get current user
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          // Upload image if available
           String? imageURL;
-          if (_image != null) {
+
+          // Check if URL is provided
+          if (imageController.text.isNotEmpty) {
+            imageURL = imageController.text; // Use provided URL
+          } else if (_image != null) {
             // Upload image to Firebase Storage
             final ref = firebase_storage.FirebaseStorage.instance
                 .ref()
@@ -58,7 +53,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             'title': titleController.text,
             'username': widget.username,
             'description': descriptionController.text,
-            'imageURL': imageURL ?? '', // Use empty string if imageURL is null
+            'imageURL': imageURL ?? '',
             // Add other fields as needed
           });
 
@@ -73,6 +68,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           // Clear input fields
           titleController.clear();
           descriptionController.clear();
+          imageController.clear();
           setState(() {
             _image = null;
           });
@@ -128,6 +124,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         if (value == null || value.isEmpty) {
                           return 'Title is required';
                         }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller:
+                          imageController, // Use imageController for URL input
+                      decoration: const InputDecoration(
+                        labelText: 'Image URL', // Change label to Image URL
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        // You can add validation for URL format if needed
                         return null;
                       },
                     ),
