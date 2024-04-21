@@ -7,23 +7,24 @@ import 'create_post.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String loggedInUsername = '';
+  late String loggedInUsername = '';
+  late String _loggedInProfilePicURL = ''; // Change to a variable
 
   @override
   void initState() {
     super.initState();
-    fetchUsername();
+    fetchUserData();
   }
 
-  // Method to fetch username from Firestore based on current user ID
-  void fetchUsername() async {
+  // Fetch username and profile picture URL
+  void fetchUserData() async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
@@ -34,18 +35,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 .get();
         setState(() {
           loggedInUsername = userData['username'];
+          _loggedInProfilePicURL =
+              userData['profilePic'] ?? ''; // Update the variable
         });
       }
     } catch (e) {
-      print('Error fetching username: $e');
+      print('Error fetching user data: $e');
     }
   }
 
-  void navigateToUserProfileScreen(BuildContext context) {
-    Navigator.push(
+  void navigateToUserProfileScreen(BuildContext context) async {
+    final updatedProfilePicURL = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+      MaterialPageRoute(
+        builder: (context) => UserProfileScreen(),
+      ),
     );
+
+    // Update profile picture URL in the home screen if it's updated in the user profile screen
+    if (updatedProfilePicURL != null && updatedProfilePicURL.isNotEmpty) {
+      setState(() {
+        _loggedInProfilePicURL = updatedProfilePicURL;
+      });
+    }
   }
 
   @override
@@ -57,15 +69,16 @@ class _HomeScreenState extends State<HomeScreen> {
             : 'Home'),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(
-                left: 16.0), // Adjust left padding as needed
+            padding: const EdgeInsets.only(left: 16.0),
             child: GestureDetector(
               onTap: () {
                 navigateToUserProfileScreen(context);
               },
-              child: const CircleAvatar(
-                backgroundImage: NetworkImage(
-                    'https://via.placeholder.com/150'), // Placeholder image URL
+              child: CircleAvatar(
+                backgroundImage: _loggedInProfilePicURL.isNotEmpty
+                    ? NetworkImage(_loggedInProfilePicURL)
+                    : const NetworkImage(
+                        'https://via.placeholder.com/150'), // Placeholder image URL
                 radius: 22,
               ),
             ),

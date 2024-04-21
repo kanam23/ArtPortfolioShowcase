@@ -8,7 +8,7 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 class CreatePostScreen extends StatefulWidget {
   final String username;
 
-  const CreatePostScreen({super.key, required this.username});
+  const CreatePostScreen({Key? key, required this.username});
 
   @override
   _CreatePostScreenState createState() => _CreatePostScreenState();
@@ -17,30 +17,26 @@ class CreatePostScreen extends StatefulWidget {
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
-  final TextEditingController imageController =
-      TextEditingController(); // Add this controller
+  final TextEditingController imageController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   File? _image;
 
   void _getImage() {
     setState(() {
-      _image = null; // Reset image when URL is provided
+      _image = null;
     });
   }
 
   void _submitPost() async {
     if (_formKey.currentState!.validate()) {
       try {
-        // Get current user
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           String? imageURL;
 
-          // Check if URL is provided
           if (imageController.text.isNotEmpty) {
-            imageURL = imageController.text; // Use provided URL
+            imageURL = imageController.text;
           } else if (_image != null) {
-            // Upload image to Firebase Storage
             final ref = firebase_storage.FirebaseStorage.instance
                 .ref()
                 .child('images/${DateTime.now().millisecondsSinceEpoch}.jpg');
@@ -48,16 +44,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             imageURL = await ref.getDownloadURL();
           }
 
-          // Add post to Firestore
+          // Get user ID
+          String userID = user.uid;
+
           await FirebaseFirestore.instance.collection('posts').add({
             'title': titleController.text,
             'username': widget.username,
             'description': descriptionController.text,
             'imageURL': imageURL ?? '',
-            // Add other fields as needed
+            'userID': userID, // Assign user ID to the post
           });
 
-          // Show success notification
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Post created successfully'),
@@ -65,7 +62,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
           );
 
-          // Clear input fields
           titleController.clear();
           descriptionController.clear();
           imageController.clear();
@@ -73,11 +69,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             _image = null;
           });
 
-          // Navigate back to home screen
           Navigator.pop(context);
         }
       } catch (e) {
-        // Show error notification
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Failed to create post'),
@@ -129,14 +123,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller:
-                          imageController, // Use imageController for URL input
+                      controller: imageController,
                       decoration: const InputDecoration(
-                        labelText: 'Image URL', // Change label to Image URL
+                        labelText: 'Image URL',
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) {
-                        // You can add validation for URL format if needed
                         return null;
                       },
                     ),
@@ -192,7 +184,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: descriptionController,
-                      maxLines: null, // Allow multiple lines for description
+                      maxLines: null,
                       decoration: const InputDecoration(
                         labelText: 'Description',
                         border: OutlineInputBorder(),
