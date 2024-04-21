@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:p2/userprofile_screen.dart';
-import 'create_post.dart'; // Import the CreatePostScreen
+import 'create_post.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void navigateToUserProfileScreen(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => UserProfileScreen()),
+      MaterialPageRoute(builder: (context) => const UserProfileScreen()),
     );
   }
 
@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 navigateToUserProfileScreen(context);
               },
-              child: CircleAvatar(
+              child: const CircleAvatar(
                 backgroundImage: NetworkImage(
                     'https://via.placeholder.com/150'), // Placeholder image URL
                 radius: 22,
@@ -85,18 +85,41 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text('Error: ${snapshot.error}'),
             );
           }
-          final List<DocumentSnapshot> documents = snapshot.data!.docs;
+          final List<QueryDocumentSnapshot<Map<String, dynamic>>> documents =
+              snapshot.data!.docs
+                  as List<QueryDocumentSnapshot<Map<String, dynamic>>>;
           return ListView.builder(
             itemCount: documents.length,
             itemBuilder: (context, index) {
-              final Map<String, dynamic> data =
-                  documents[index].data() as Map<String, dynamic>;
-              return PostItem(
-                imageURL: data['imageURL'],
-                userID: data['userID'],
-                description: data['description'],
-                title: data['title'],
-                username: data['username'],
+              final DocumentReference<Map<String, dynamic>> postRef =
+                  documents[index].reference;
+              return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                future: postRef.get(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+                  final Map<String, dynamic>? postData = snapshot.data!.data();
+                  final int likes = postData?['likes'] ?? 0;
+                  final bool likedByCurrentUser = postData?['likedBy']
+                          ?.contains(FirebaseAuth.instance.currentUser!.uid) ??
+                      false;
+                  return PostItem(
+                    postRef: postRef,
+                    imageURL: postData?['imageURL'],
+                    userID: postData?['userID'],
+                    description: postData?['description'],
+                    title: postData?['title'],
+                    username: postData?['username'],
+                    likes: likes,
+                    likedByCurrentUser: likedByCurrentUser,
+                  );
+                },
               );
             },
           );
@@ -118,20 +141,61 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class PostItem extends StatelessWidget {
+class PostItem extends StatefulWidget {
+  final DocumentReference<Map<String, dynamic>> postRef;
   final String? imageURL;
   final String? userID;
   final String? description;
   final String? title;
   final String? username;
+  final int likes;
+  final bool likedByCurrentUser;
 
   const PostItem({
+    required this.postRef,
     this.imageURL,
     this.userID,
     this.description,
     this.title,
     this.username,
+    required this.likes,
+    required this.likedByCurrentUser,
   });
+
+  @override
+  _PostItemState createState() => _PostItemState();
+}
+
+class _PostItemState extends State<PostItem> {
+  late int _likes;
+  late bool _likedByCurrentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _likes = widget.likes;
+    _likedByCurrentUser = widget.likedByCurrentUser;
+  }
+
+  void _toggleLike() {
+    final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
+    setState(() {
+      if (_likedByCurrentUser) {
+        _likes--;
+        widget.postRef.update({
+          'likes': _likes,
+          'likedBy': FieldValue.arrayRemove([currentUserUid]),
+        });
+      } else {
+        _likes++;
+        widget.postRef.update({
+          'likes': _likes,
+          'likedBy': FieldValue.arrayUnion([currentUserUid]),
+        });
+      }
+      _likedByCurrentUser = !_likedByCurrentUser;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,35 +204,50 @@ class PostItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (title != null)
+          if (widget.title != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Text(
-                title!,
+                widget.title!,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-          if (username != null)
+          if (widget.username != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Text(
-                'By $username',
+                'By ${widget.username}',
                 style: const TextStyle(fontSize: 12.0, color: Colors.grey),
               ),
             ),
-          if (imageURL != null && imageURL!.isNotEmpty)
+          if (widget.imageURL != null && widget.imageURL!.isNotEmpty)
             Center(
               child: Image.network(
-                imageURL!,
-                fit: BoxFit.cover, // Ensure the image fills the container
-                width: double.infinity, // Ensure the image takes full width
-                height: 200, // Set the fixed height for all images
+                widget.imageURL!,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 200,
               ),
             ),
-          if (description != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: _likedByCurrentUser
+                      ? const Icon(Icons.favorite)
+                      : const Icon(Icons.favorite_border),
+                  color: _likedByCurrentUser ? Colors.red : null,
+                  onPressed: _toggleLike,
+                ),
+                Text('$_likes Likes'),
+              ],
+            ),
+          ),
+          if (widget.description != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text(description!),
+              child: Text(widget.description!),
             ),
         ],
       ),

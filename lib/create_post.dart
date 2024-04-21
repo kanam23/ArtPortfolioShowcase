@@ -8,7 +8,7 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 class CreatePostScreen extends StatefulWidget {
   final String username;
 
-  const CreatePostScreen({Key? key, required this.username}) : super(key: key);
+  const CreatePostScreen({super.key, required this.username});
 
   @override
   _CreatePostScreenState createState() => _CreatePostScreenState();

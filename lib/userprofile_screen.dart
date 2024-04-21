@@ -72,7 +72,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             GestureDetector(
               onTap: _changeProfilePic,
               child: CircleAvatar(
@@ -81,14 +81,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ? NetworkImage(_profilePicURL)
                     : null,
                 child: _profilePicURL.isEmpty
-                    ? Icon(Icons.person, size: 80, color: Colors.white)
+                    ? const Icon(Icons.person, size: 80, color: Colors.white)
                     : null,
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               _loggedInUsername,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -103,10 +103,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     .snapshots(),
                 builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
+                    return const Center(child: CircularProgressIndicator());
                   }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(child: Text('No posts yet.'));
+                    return const Center(child: Text('No posts yet.'));
                   }
                   return ListView.builder(
                     itemCount: snapshot.data!.docs.length,
@@ -123,16 +123,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 },
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _navigateToCreatePostScreen,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+              ),
               child: const Text(
                 'Create Post',
                 style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
               ),
             ),
           ],
