@@ -63,9 +63,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _logout() async {
     await FirebaseAuth.instance.signOut();
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => LoginScreen()),
+      (route) => false, // This line removes all previous routes
     );
   }
 
@@ -76,98 +77,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Settings'),
         backgroundColor: Colors.amber,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Settings',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Change Personal Information',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _firstNameController,
-                    decoration: InputDecoration(
-                      labelText: 'First Name',
-                      border: OutlineInputBorder(),
-                      labelStyle: TextStyle(color: Colors.white),
-                    ),
-                    style: TextStyle(color: Colors.white),
-                  ),
+      body: SingleChildScrollView(
+        // Wrap with SingleChildScrollView
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: _lastNameController,
-                    decoration: InputDecoration(
-                      labelText: 'Last Name',
-                      border: OutlineInputBorder(),
-                      labelStyle: TextStyle(color: Colors.white),
-                    ),
-                    style: TextStyle(color: Colors.white),
-                  ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Change Personal Information',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
-            SizedBox(height: 8),
-            TextField(
-              controller: _dobController,
-              decoration: InputDecoration(
-                labelText: 'Date of Birth',
-                border: OutlineInputBorder(),
-                labelStyle: TextStyle(color: Colors.white),
               ),
-              style: TextStyle(color: Colors.white),
-            ),
-            SizedBox(height: 8),
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(
-                labelText: 'Username',
-                border: OutlineInputBorder(),
-                labelStyle: TextStyle(color: Colors.white),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _firstNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'First Name',
+                        border: OutlineInputBorder(),
+                        labelStyle: TextStyle(color: Colors.white),
+                      ),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _lastNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Last Name',
+                        border: OutlineInputBorder(),
+                        labelStyle: TextStyle(color: Colors.white),
+                      ),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
-              style: TextStyle(color: Colors.white),
-            ),
-            SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _updatePersonalInfo,
-              child: const Text(
-                'Update ',
-                style: TextStyle(color: Colors.white),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _dobController,
+                decoration: const InputDecoration(
+                  labelText: 'Date of Birth',
+                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(color: Colors.white),
+                ),
+                style: const TextStyle(color: Colors.white),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _usernameController,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(color: Colors.white),
+                ),
+                style: const TextStyle(color: Colors.white),
               ),
-            ),
-            SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.white),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: _updatePersonalInfo,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                ),
+                child: const Text(
+                  'Update ',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
-              onTap: _logout,
-            ),
-          ],
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: _logout,
+              ),
+            ],
+          ),
         ),
       ),
       backgroundColor: Colors.grey[900],

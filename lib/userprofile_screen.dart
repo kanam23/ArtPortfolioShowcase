@@ -64,15 +64,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     String? newProfilePicURL = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Change Profile Picture'),
+        title: const Text('Change Profile Picture'),
         content: TextField(
-          decoration: InputDecoration(hintText: 'Enter Image URL'),
+          decoration: const InputDecoration(hintText: 'Enter Image URL'),
           onChanged: (value) => setState(() => _profilePicURL = value),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
@@ -88,7 +88,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // If no URL provided, show an error or handle it accordingly
               }
             },
-            child: Text('Save'),
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -110,12 +110,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         backgroundColor: Colors.amber,
         actions: [
           IconButton(
-            icon: Icon(Icons.settings),
+            icon: const Icon(Icons.settings),
             onPressed: () {
               // Navigate to the settings screen
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => SettingsScreen()),
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
             },
           ),

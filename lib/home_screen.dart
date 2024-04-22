@@ -7,7 +7,7 @@ import 'create_post.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final updatedProfilePicURL = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UserProfileScreen(),
+        builder: (context) => const UserProfileScreen(),
       ),
     );
 
