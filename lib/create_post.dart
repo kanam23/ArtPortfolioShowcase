@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
 class CreatePostScreen extends StatefulWidget {
@@ -20,11 +21,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final TextEditingController imageController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   File? _image;
+  bool _useImageURL = false;
+  final picker = ImagePicker();
 
-  void _getImage() {
-    setState(() {
-      _image = null;
-    });
+  void _getImageFromGallery() async {
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+        _useImageURL =
+            false; // Ensure image URL field is cleared when an image is selected
+      });
+    }
   }
 
   void _submitPost() async {
@@ -34,7 +42,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         if (user != null) {
           String? imageURL;
 
-          if (imageController.text.isNotEmpty) {
+          if (_useImageURL) {
             imageURL = imageController.text;
           } else if (_image != null) {
             final ref = firebase_storage.FirebaseStorage.instance
@@ -44,7 +52,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             imageURL = await ref.getDownloadURL();
           }
 
-          // Get user ID
           String userID = user.uid;
 
           await FirebaseFirestore.instance.collection('posts').add({
@@ -52,7 +59,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             'username': widget.username,
             'description': descriptionController.text,
             'imageURL': imageURL ?? '',
-            'userID': userID, // Assign user ID to the post
+            'userID': userID,
           });
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -122,65 +129,86 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: imageController,
-                      decoration: const InputDecoration(
-                        labelText: 'Image URL',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        return null;
-                      },
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _useImageURL,
+                          onChanged: (value) {
+                            setState(() {
+                              _useImageURL = value!;
+                              _image =
+                                  null; // Clear selected image if user switches to image URL
+                            });
+                          },
+                        ),
+                        const Text('Use Image URL'),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    _image == null
-                        ? const Column(
-                            children: [
-                              Text(
-                                'Add an image',
-                                style: TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: Colors.grey,
+                    if (!_useImageURL) ...[
+                      const SizedBox(height: 16),
+                      _image == null
+                          ? const Column(
+                              children: [
+                                Text(
+                                  'Add an image',
+                                  style: TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.grey,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: 16),
-                            ],
-                          )
-                        : Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Image.file(
-                                _image!,
-                                width: double.infinity,
-                                height: 200,
-                                fit: BoxFit.cover,
-                              ),
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: IconButton(
-                                  icon: const Icon(Icons.cancel),
-                                  onPressed: () {
-                                    setState(() {
-                                      _image = null;
-                                    });
-                                  },
+                                SizedBox(height: 16),
+                              ],
+                            )
+                          : Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Image.file(
+                                  _image!,
+                                  width: double.infinity,
+                                  height: 200,
+                                  fit: BoxFit.cover,
                                 ),
-                              ),
-                            ],
-                          ),
-                    ElevatedButton(
-                      onPressed: _getImage,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.add),
-                          const SizedBox(width: 8),
-                          Text(
-                              _image == null ? 'Select Image' : 'Change Image'),
-                        ],
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.cancel),
+                                    onPressed: () {
+                                      setState(() {
+                                        _image = null;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                      ElevatedButton(
+                        onPressed: _getImageFromGallery,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.add),
+                            const SizedBox(width: 8),
+                            Text(
+                              _image == null ? 'Select Image' : 'Change Image',
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
+                    if (_useImageURL) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: imageController,
+                        decoration: const InputDecoration(
+                          labelText: 'Image URL',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          return null;
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: descriptionController,
