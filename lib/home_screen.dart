@@ -7,7 +7,7 @@ import 'create_post.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -15,7 +15,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late String loggedInUsername = '';
-  late String _loggedInProfilePicURL = ''; // Change to a variable
 
   @override
   void initState() {
@@ -35,8 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 .get();
         setState(() {
           loggedInUsername = userData['username'];
-          _loggedInProfilePicURL =
-              userData['profilePic'] ?? ''; // Update the variable
         });
       }
     } catch (e) {
@@ -55,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Update profile picture URL in the home screen if it's updated in the user profile screen
     if (updatedProfilePicURL != null && updatedProfilePicURL.isNotEmpty) {
       setState(() {
-        _loggedInProfilePicURL = updatedProfilePicURL;
+        // _loggedInProfilePicURL = updatedProfilePicURL;
       });
     }
   }
@@ -74,11 +71,9 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 navigateToUserProfileScreen(context);
               },
-              child: CircleAvatar(
-                backgroundImage: _loggedInProfilePicURL.isNotEmpty
-                    ? NetworkImage(_loggedInProfilePicURL)
-                    : const NetworkImage(
-                        'https://via.placeholder.com/150'), // Placeholder image URL
+              child: const CircleAvatar(
+                backgroundImage: NetworkImage(
+                    'https://via.placeholder.com/150'), // Placeholder image URL
                 radius: 22,
               ),
             ),
@@ -106,33 +101,26 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index) {
               final DocumentReference<Map<String, dynamic>> postRef =
                   documents[index].reference;
-              return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                future: postRef.get(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  }
-                  final Map<String, dynamic>? postData = snapshot.data!.data();
-                  final int likes = postData?['likes'] ?? 0;
-                  final bool likedByCurrentUser = postData?['likedBy']
-                          ?.contains(FirebaseAuth.instance.currentUser!.uid) ??
-                      false;
-                  return PostItem(
-                    postRef: postRef,
-                    imageURL: postData?['imageURL'],
-                    userID: postData?['userID'],
-                    description: postData?['description'],
-                    title: postData?['title'],
-                    username: postData?['username'],
-                    likes: likes,
-                    likedByCurrentUser: likedByCurrentUser,
-                  );
-                },
+              final postData = documents[index].data();
+              final int likes = postData['likes'] ?? 0;
+              final bool likedByCurrentUser = postData['likedBy']
+                      ?.contains(FirebaseAuth.instance.currentUser!.uid) ??
+                  false;
+              final String? username = postData['username'];
+              final List<dynamic> commentsData = postData['comments'] ?? [];
+              final List<Map<String, dynamic>> comments =
+                  List<Map<String, dynamic>>.from(commentsData);
+              return PostItem(
+                postRef: postRef,
+                imageURL: postData['imageURL'],
+                userID: postData['userID'],
+                description: postData['description'],
+                title: postData['title'],
+                username: username,
+                likes: likes,
+                likedByCurrentUser: likedByCurrentUser,
+                comments: comments,
+                loggedInUsername: loggedInUsername,
               );
             },
           );
@@ -163,6 +151,8 @@ class PostItem extends StatefulWidget {
   final String? username;
   final int likes;
   final bool likedByCurrentUser;
+  final List<Map<String, dynamic>> comments;
+  final String loggedInUsername;
 
   const PostItem({
     required this.postRef,
@@ -173,6 +163,8 @@ class PostItem extends StatefulWidget {
     this.username,
     required this.likes,
     required this.likedByCurrentUser,
+    required this.comments,
+    required this.loggedInUsername,
   });
 
   @override
@@ -208,6 +200,30 @@ class _PostItemState extends State<PostItem> {
       }
       _likedByCurrentUser = !_likedByCurrentUser;
     });
+  }
+
+  void _showCommentsDialog(
+      BuildContext context, DocumentReference<Map<String, dynamic>> postRef) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Comments'),
+          content: CommentsDialog(
+            postRef: postRef,
+            loggedInUsername: widget.loggedInUsername,
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -254,6 +270,14 @@ class _PostItemState extends State<PostItem> {
                   onPressed: _toggleLike,
                 ),
                 Text('$_likes Likes'),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.comment),
+                  onPressed: () {
+                    _showCommentsDialog(context, widget.postRef);
+                  },
+                ),
+                Text('${widget.comments.length} Comments'),
               ],
             ),
           ),
@@ -264,6 +288,122 @@ class _PostItemState extends State<PostItem> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class CommentsDialog extends StatefulWidget {
+  final DocumentReference<Map<String, dynamic>> postRef;
+  final String loggedInUsername;
+
+  const CommentsDialog({
+    super.key,
+    required this.postRef,
+    required this.loggedInUsername,
+  });
+
+  @override
+  _CommentsDialogState createState() => _CommentsDialogState();
+}
+
+class _CommentsDialogState extends State<CommentsDialog> {
+  late TextEditingController _commentController;
+
+  @override
+  void initState() {
+    super.initState();
+    _commentController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  void _postComment() async {
+    final String commentText = _commentController.text.trim();
+    if (commentText.isNotEmpty) {
+      try {
+        final newComment = {
+          'text': commentText,
+          'username': widget.loggedInUsername,
+        };
+        await widget.postRef.update({
+          'comments': FieldValue.arrayUnion([newComment]),
+        });
+        _commentController.clear();
+      } catch (error) {
+        print('Error posting comment: $error');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SizedBox(
+            width: double.maxFinite,
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: widget.postRef.snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                Map<String, dynamic>? data =
+                    snapshot.data?.data() as Map<String, dynamic>?;
+                if (data == null || !data.containsKey('comments')) {
+                  return const Text('No comments');
+                }
+
+                List<dynamic> commentsData = data['comments'];
+                if (commentsData.isEmpty) {
+                  return const Text('No comments');
+                }
+
+                List<Map<String, dynamic>> comments =
+                    List<Map<String, dynamic>>.from(commentsData);
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: comments.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(comments[index]['text']),
+                      subtitle: Text('By ${comments[index]['username']}'),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _commentController,
+                  decoration: const InputDecoration(
+                    hintText: 'Add a comment...',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _postComment,
+                child: const Text('Post'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
