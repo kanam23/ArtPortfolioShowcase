@@ -41,11 +41,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void navigateToUserProfileScreen(BuildContext context) async {
+  void navigateToUserProfileScreen(
+      BuildContext context, String username) async {
     final updatedProfilePicURL = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const UserProfileScreen(),
+        builder: (context) => UserProfileScreen(username: username),
       ),
     );
 
@@ -69,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.only(left: 16.0),
             child: GestureDetector(
               onTap: () {
-                navigateToUserProfileScreen(context);
+                navigateToUserProfileScreen(context, loggedInUsername);
               },
               child: const CircleAvatar(
                 backgroundImage: NetworkImage(
@@ -121,6 +122,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 likedByCurrentUser: likedByCurrentUser,
                 comments: comments,
                 loggedInUsername: loggedInUsername,
+                onTapProfile: () {
+                  navigateToUserProfileScreen(context, username!);
+                },
               );
             },
           );
@@ -153,6 +157,7 @@ class PostItem extends StatefulWidget {
   final bool likedByCurrentUser;
   final List<Map<String, dynamic>> comments;
   final String loggedInUsername;
+  final VoidCallback onTapProfile;
 
   const PostItem({
     required this.postRef,
@@ -165,6 +170,7 @@ class PostItem extends StatefulWidget {
     required this.likedByCurrentUser,
     required this.comments,
     required this.loggedInUsername,
+    required this.onTapProfile,
   });
 
   @override
@@ -233,20 +239,36 @@ class _PostItemState extends State<PostItem> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (widget.username != null)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    'By ${widget.username}',
+                    style: const TextStyle(fontSize: 12.0, color: Colors.grey),
+                  ),
+                ),
+              GestureDetector(
+                onTap: widget.onTapProfile,
+                child: const Row(
+                  children: [
+                    Icon(Icons.person),
+                    SizedBox(width: 4),
+                    Text('See User Profile'),
+                    SizedBox(width: 8), // Add spacing here
+                  ],
+                ),
+              ),
+            ],
+          ),
           if (widget.title != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Text(
                 widget.title!,
                 style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          if (widget.username != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Text(
-                'By ${widget.username}',
-                style: const TextStyle(fontSize: 12.0, color: Colors.grey),
               ),
             ),
           if (widget.imageURL != null && widget.imageURL!.isNotEmpty)

@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'login_screen.dart';
 import 'create_post.dart'; // Import the CreatePostScreen
 import 'settings_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class UserProfileScreen extends StatefulWidget {
-  const UserProfileScreen({Key? key});
+  final String username;
+
+  const UserProfileScreen({Key? key, required this.username});
 
   @override
   _UserProfileScreenState createState() => _UserProfileScreenState();
@@ -37,10 +42,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (userData != null) {
         setState(() {
           _loggedInUsername = userData['username'] ?? '';
-          _profilePicURL = userData['profilePic'] ?? '';
         });
       }
     }
+
+    // Retrieve profile picture URL for the user being viewed
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('username', isEqualTo: widget.username)
+        .get();
+    final userDoc = snapshot.docs.first;
+    final userData = userDoc.data();
+    setState(() {
+      _profilePicURL = userData['profilePic'] ?? '';
+    });
   }
 
   void _logout() async {
@@ -60,66 +75,57 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  void _changeProfilePic() async {
-    String? newProfilePicURL = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Profile Picture'),
-        content: TextField(
-          decoration: const InputDecoration(hintText: 'Enter Image URL'),
-          onChanged: (value) => setState(() => _profilePicURL = value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (_profilePicURL.isNotEmpty) {
-                // Update profilePicURL in Firestore
-                await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(_loggedInUserId)
-                    .update({'profilePic': _profilePicURL});
-                // Close the dialog and pass the updated profilePicURL back to the calling screen
-                Navigator.pop(context, _profilePicURL);
-              } else {
-                // If no URL provided, show an error or handle it accordingly
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _changeProfilePic() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      File imageFile = File(pickedFile.path);
+      // Upload image to Firebase Storage
+      String imageName = 'profile_pic_${DateTime.now().millisecondsSinceEpoch}';
+      final ref = FirebaseStorage.instance.ref().child(imageName);
+      await ref.putFile(imageFile);
+      final imageUrl = await ref.getDownloadURL();
 
-    // Update profilePicURL directly in the state with the updated value
-    if (newProfilePicURL != null && newProfilePicURL.isNotEmpty) {
+      // Update profilePicURL in Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_loggedInUserId)
+          .update({'profilePic': imageUrl});
+
+      // Update UI
       setState(() {
-        _profilePicURL = newProfilePicURL;
+        _profilePicURL = imageUrl;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isCurrentUserProfile = widget.username == _loggedInUsername;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('User Profile Screen'),
+        title: Text(
+          widget.username.isNotEmpty
+              ? "${widget.username}'s Profile"
+              : 'Profile',
+        ),
         backgroundColor: Colors.amber,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              // Navigate to the settings screen
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
+        actions: isCurrentUserProfile
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ]
+            : [],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -128,7 +134,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           children: [
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: _changeProfilePic,
+              onTap: isCurrentUserProfile ? _changeProfilePic : null,
               child: CircleAvatar(
                 radius: 80,
                 backgroundImage: _profilePicURL.isNotEmpty
@@ -141,7 +147,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              _loggedInUsername,
+              widget.username,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -152,7 +158,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               child: StreamBuilder(
                 stream: FirebaseFirestore.instance
                     .collection('posts')
-                    .where('userID', isEqualTo: _loggedInUserId)
+                    .where('username', isEqualTo: widget.username)
                     .snapshots(),
                 builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -178,19 +184,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _navigateToCreatePostScreen,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+            if (isCurrentUserProfile) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _navigateToCreatePostScreen,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                ),
+                child: const Text(
+                  'Create Post',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
-              child: const Text(
-                'Create Post',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
+            ],
           ],
         ),
       ),
