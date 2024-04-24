@@ -1,7 +1,10 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
+import 'home_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key});
@@ -15,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
+  String _selectedRole = 'Painter'; // Default role changed to "Painter"
 
   @override
   void initState() {
@@ -36,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _lastNameController.text = userData['lastName'] ?? '';
           _dobController.text = userData['dob'] ?? '';
           _usernameController.text = userData['username'] ?? '';
+          _selectedRole = userData['role'] ?? 'Painter';
         });
       }
     }
@@ -44,20 +49,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _updatePersonalInfo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Update additional user information in Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({
-        'firstName': _firstNameController.text,
-        'lastName': _lastNameController.text,
-        'dob': _dobController.text,
-        'username': _usernameController.text,
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Personal information updated successfully')),
-      );
+      final newUsername = _usernameController.text;
+
+      try {
+        // Update additional user information in Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({
+          'firstName': _firstNameController.text,
+          'lastName': _lastNameController.text,
+          'dob': _dobController.text,
+          'username': newUsername,
+        });
+
+        // Update username for posts
+        final postsQuerySnapshot = await FirebaseFirestore.instance
+            .collection('posts')
+            .where('userID', isEqualTo: user.uid)
+            .get();
+
+        for (final postDocument in postsQuerySnapshot.docs) {
+          await FirebaseFirestore.instance.runTransaction((transaction) async {
+            final postSnapshot = await transaction.get(postDocument.reference);
+            if (postSnapshot.exists) {
+              transaction
+                  .update(postDocument.reference, {'username': newUsername});
+            }
+          });
+        }
+
+        // Update username for comments
+        final commentsQuerySnapshot = await FirebaseFirestore.instance
+            .collection('posts')
+            .where('comments', arrayContains: {'username': user.uid}).get();
+
+        for (final postDocument in commentsQuerySnapshot.docs) {
+          await FirebaseFirestore.instance.runTransaction((transaction) async {
+            final postSnapshot = await transaction.get(postDocument.reference);
+            if (postSnapshot.exists) {
+              final updatedComments = postSnapshot['comments'].map((comment) {
+                if (comment['username'] == user.uid) {
+                  return {...comment, 'username': newUsername};
+                }
+                return comment;
+              }).toList();
+              transaction.update(
+                  postDocument.reference, {'comments': updatedComments});
+            }
+          });
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Personal information updated successfully'),
+          ),
+        );
+
+        // Navigate back to HomeScreen without adding to the navigation stack
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } catch (e) {
+        print('Error updating personal information: $e');
+      }
     }
   }
 
@@ -76,6 +132,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: const Text('Settings'),
         backgroundColor: Colors.amber,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
       body: SingleChildScrollView(
         // Wrap with SingleChildScrollView
@@ -148,6 +210,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   labelStyle: TextStyle(color: Colors.white),
                 ),
                 style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Text(
+                    'Role: ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Radio<String>(
+                    value: 'Painter',
+                    groupValue: _selectedRole,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedRole = value!;
+                      });
+                    },
+                  ),
+                  const Text(
+                    'Painter',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  Radio<String>(
+                    value: 'Photographer',
+                    groupValue: _selectedRole,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedRole = value!;
+                      });
+                    },
+                  ),
+                  const Text(
+                    'Photographer',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const SizedBox(width: 32), // Adjust spacing
+                  Radio<String>(
+                    value: 'Sculptor',
+                    groupValue: _selectedRole,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedRole = value!;
+                      });
+                    },
+                  ),
+                  const Text(
+                    'Sculptor',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               ElevatedButton(

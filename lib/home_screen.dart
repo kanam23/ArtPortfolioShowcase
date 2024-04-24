@@ -15,6 +15,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late String loggedInUsername = '';
+  late String loggedInUserProfilePicURL = '';
 
   @override
   void initState() {
@@ -22,7 +23,6 @@ class _HomeScreenState extends State<HomeScreen> {
     fetchUserData();
   }
 
-  // Fetch username and profile picture URL
   void fetchUserData() async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
@@ -34,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 .get();
         setState(() {
           loggedInUsername = userData['username'];
+          loggedInUserProfilePicURL = userData['profilePic'] ?? '';
         });
       }
     } catch (e) {
@@ -50,10 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-    // Update profile picture URL in the home screen if it's updated in the user profile screen
     if (updatedProfilePicURL != null && updatedProfilePicURL.isNotEmpty) {
       setState(() {
-        // _loggedInProfilePicURL = updatedProfilePicURL;
+        loggedInUserProfilePicURL = updatedProfilePicURL;
       });
     }
   }
@@ -72,14 +72,16 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 navigateToUserProfileScreen(context, loggedInUsername);
               },
-              child: const CircleAvatar(
-                backgroundImage: NetworkImage(
-                    'https://via.placeholder.com/150'), // Placeholder image URL
+              child: CircleAvatar(
+                backgroundImage: loggedInUserProfilePicURL.isNotEmpty
+                    ? NetworkImage(loggedInUserProfilePicURL)
+                    : const NetworkImage('https://via.placeholder.com/150'),
                 radius: 22,
               ),
             ),
           ),
         ],
+        automaticallyImplyLeading: false, // Hide the back arrow
       ),
       body: StreamBuilder(
         stream: FirebaseFirestore.instance.collection('posts').snapshots(),
