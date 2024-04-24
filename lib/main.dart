@@ -4,9 +4,14 @@ import 'login_screen.dart';
 import 'register_screen.dart';
 import 'firebase_options.dart';
 import 'home_screen.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Future.delayed(
+    const Duration(seconds: 5),
+  );
+  FlutterNativeSplash.remove();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
