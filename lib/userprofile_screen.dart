@@ -5,15 +5,21 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'login_screen.dart';
-import 'create_post.dart'; // Import the CreatePostScreen
+import 'create_post.dart';
 import 'settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
+import 'request_screen.dart';
 import 'dart:io';
 
 class UserProfileScreen extends StatefulWidget {
   final String username;
+  final VoidCallback refreshCallback;
 
-  const UserProfileScreen({Key? key, required this.username});
+  const UserProfileScreen({
+    super.key,
+    required this.username,
+    required this.refreshCallback,
+  });
 
   @override
   _UserProfileScreenState createState() => _UserProfileScreenState();
@@ -156,22 +162,100 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
+  void _sendMessageRequest(String message) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final sender =
+            _loggedInUsername; // Use the currently logged-in user as the sender
+        final receiver =
+            widget.username; // Use the profile being viewed as the receiver
+        final timestamp = Timestamp.now();
+
+        // Store the request in the Firestore "requests" collection
+        await FirebaseFirestore.instance.collection('requests').add({
+          'sender': sender,
+          'receiver': receiver,
+          'message': message,
+          'timestamp': timestamp,
+        });
+
+        // Show a success message or navigate to another screen
+        Navigator.pop(context); // Close the dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Request sent successfully'),
+          ),
+        );
+      } catch (e) {
+        print('Error sending request: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to send request'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '${widget.username} Profile',
+          '${widget.username}\'s Profile',
         ),
         actions: [
           if (_isCurrentUser)
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.mail),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => RequestScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+          if (!_isCurrentUser)
             IconButton(
-              icon: const Icon(Icons.settings),
+              icon: const Icon(Icons.message),
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsScreen(),
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Send Message to ${widget.username}'),
+                    content: TextField(
+                      controller: _descriptionController,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter your message',
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () =>
+                            _sendMessageRequest(_descriptionController.text),
+                        child: const Text('Submit a Request'),
+                      ),
+                    ],
                   ),
                 );
               },

@@ -47,7 +47,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final updatedProfilePicURL = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UserProfileScreen(username: username),
+        builder: (context) => UserProfileScreen(
+          username: username,
+          refreshCallback: () {
+            fetchUserData();
+          },
+        ),
       ),
     );
 
@@ -72,11 +77,36 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 navigateToUserProfileScreen(context, loggedInUsername);
               },
-              child: CircleAvatar(
-                backgroundImage: loggedInUserProfilePicURL.isNotEmpty
-                    ? NetworkImage(loggedInUserProfilePicURL)
-                    : const NetworkImage('https://via.placeholder.com/150'),
-                radius: 22,
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(FirebaseAuth.instance.currentUser!.uid)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircleAvatar(
+                      radius: 22,
+                      backgroundImage:
+                          NetworkImage('https://via.placeholder.com/150'),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return const CircleAvatar(
+                      radius: 22,
+                      backgroundImage:
+                          NetworkImage('https://via.placeholder.com/150'),
+                    );
+                  }
+                  final userData = snapshot.data!.data();
+                  final profilePicURL =
+                      (userData as Map<String, dynamic>)['profilePic'] ?? '';
+                  return CircleAvatar(
+                    radius: 22,
+                    backgroundImage: profilePicURL.isNotEmpty
+                        ? NetworkImage(profilePicURL)
+                        : const NetworkImage('https://via.placeholder.com/150'),
+                  );
+                },
               ),
             ),
           ),

@@ -290,6 +290,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             },
                           ),
                           const Text('Sculptor'),
+                          Radio<String>(
+                            value: 'Viewer',
+                            groupValue: selectedRole,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedRole = value!;
+                              });
+                            },
+                          ),
+                          const Text('Viewer'),
                         ],
                       ),
                       const SizedBox(height: 20),
