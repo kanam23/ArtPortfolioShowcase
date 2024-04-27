@@ -1,4 +1,14 @@
 # project2
+Art Portfolio Showcase 
+Khairul Anam
+Douglas Hernandez-Ortiz
+
+Presentation link: 
+https://docs.google.com/presentation/d/1txDeSGOIyYTmPrUXR8zf-AdooAu4zeifDLt64Xvu4Zs/edit?usp=sharing 
+
+Youtube link: 
+https://www.youtube.com/watch?v=YKRpoq-5Oxs 
+
 
 A new Flutter project.
 
