@@ -3,7 +3,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
+<<<<<<< Updated upstream
 class RequestScreen extends StatelessWidget {
+=======
+class RequestScreen extends StatefulWidget {
+  @override
+  _RequestScreenStateState createState() => _RequestScreenStateState();
+}
+
+class _RequestScreenStateState extends State<RequestScreen> {
+  late List<bool> _isChecked;
+
+  @override
+  void initState() {
+    super.initState();
+    _isChecked = List<bool>.filled(
+        0, false); // Initialize _isChecked list with default values
+  }
+
+>>>>>>> Stashed changes
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -15,6 +33,7 @@ class RequestScreen extends StatelessWidget {
         ),
       );
     } else {
+<<<<<<< Updated upstream
       String currentUserUsername = ''; // Initialize with an empty string
 
       // Get the current user's username from Firestore
@@ -26,6 +45,8 @@ class RequestScreen extends StatelessWidget {
         currentUserUsername = userDoc.get('username');
       });
 
+=======
+>>>>>>> Stashed changes
       return Scaffold(
         appBar: AppBar(
           title: const Text('Message Requests'),
@@ -33,7 +54,11 @@ class RequestScreen extends StatelessWidget {
         body: StreamBuilder(
           stream: FirebaseFirestore.instance
               .collection('requests')
+<<<<<<< Updated upstream
               .where('receiver', isEqualTo: currentUserUsername)
+=======
+              .where('receiver', isEqualTo: currentUser.displayName)
+>>>>>>> Stashed changes
               .snapshots(),
           builder: (BuildContext context, AsyncSnapshot snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -45,6 +70,15 @@ class RequestScreen extends StatelessWidget {
                 child: Text('No message requests'),
               );
             } else {
+<<<<<<< Updated upstream
+=======
+              // Update _isChecked list length if needed
+              if (_isChecked.length != snapshot.data!.docs.length) {
+                _isChecked =
+                    List<bool>.filled(snapshot.data!.docs.length, false);
+              }
+
+>>>>>>> Stashed changes
               return ListView.builder(
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (BuildContext context, int index) {
@@ -54,6 +88,10 @@ class RequestScreen extends StatelessWidget {
                   var timestamp = request['timestamp'];
                   var formattedDate =
                       DateFormat('MMM dd, yyyy').format(timestamp.toDate());
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
                   return Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10.0),
@@ -68,20 +106,35 @@ class RequestScreen extends StatelessWidget {
                             'Message: $message',
                             style: const TextStyle(fontSize: 16.0),
                           ),
+<<<<<<< Updated upstream
                           Text('Timestamp: $formattedDate'),
+=======
+                          Text('Time: $formattedDate'),
+>>>>>>> Stashed changes
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Checkbox(
+<<<<<<< Updated upstream
                                 value: false,
                                 onChanged: (_) {
                                   // Handle checkbox state change
+=======
+                                value: _isChecked[index],
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    _isChecked[index] = value ?? false;
+                                  });
+>>>>>>> Stashed changes
                                 },
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete),
                                 onPressed: () {
+<<<<<<< Updated upstream
                                   // Add code here to delete the request
+=======
+>>>>>>> Stashed changes
                                   request.reference.delete();
                                 },
                               ),
